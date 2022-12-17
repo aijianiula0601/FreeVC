@@ -70,7 +70,7 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
             #print(c)
             '''
             c_filename = filename.replace(".wav", f"_{i}.pt")
-            c_filename = c_filename.replace("wav16k", "sr/wavlm")
+            c_filename = c_filename.replace("wav16k", "sr/wavlm16k")
             c = torch.load(c_filename).squeeze(0)
             
         lmin = min(c.size(-1), spec.size(-1))
