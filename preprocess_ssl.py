@@ -26,12 +26,13 @@ if __name__ == "__main__":
     parser.add_argument("--sr", type=int, default=16000, help="sampling rate")
     parser.add_argument("--in_dir", type=str, default="dataset/vctk-16k", help="path to input dir")
     parser.add_argument("--out_dir", type=str, default="dataset/wavlm", help="path to output dir")
+    parser.add_argument("--wavlm_model", type=str, default='wavlm/WavLM-Large.pt', help="path to wavlm model")
     args = parser.parse_args()
     
     os.makedirs(args.out_dir, exist_ok=True)
 
     print("Loading WavLM for content...")
-    checkpoint = torch.load('wavlm/WavLM-Large.pt')
+    checkpoint = torch.load(args.wavlm_model)
     cfg = WavLMConfig(checkpoint['cfg'])
     cmodel = WavLM(cfg).cuda()
     cmodel.load_state_dict(checkpoint['model'])

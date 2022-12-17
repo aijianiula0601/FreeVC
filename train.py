@@ -3,7 +3,9 @@ import json
 import argparse
 import itertools
 import math
+import random
 import torch
+import setproctitle
 from torch import nn, optim
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
@@ -40,12 +42,14 @@ def main():
 
   n_gpus = torch.cuda.device_count()
   os.environ['MASTER_ADDR'] = 'localhost'
-  os.environ['MASTER_PORT'] = hps.train.port
+  os.environ['MASTER_PORT'] = f'{random.randint(80000, 90000)}'
 
   mp.spawn(run, nprocs=n_gpus, args=(n_gpus, hps,))
 
 
 def run(rank, n_gpus, hps):
+  setproctitle.setproctitle(hps.train.process_name if hps.train.process_name else "freevc")
+
   global global_step
   if rank == 0:
     logger = utils.get_logger(hps.model_dir)
