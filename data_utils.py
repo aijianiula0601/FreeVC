@@ -5,27 +5,31 @@ import numpy as np
 import torch
 import torch.utils.data
 
-import commons 
+import commons
 from mel_processing import spectrogram_torch, spec_to_mel_torch
 from utils import load_wav_to_torch, load_filepaths_and_text, transform
-#import h5py
+
+# import h5py
 
 
 """Multi speaker version"""
+
+
 class TextAudioSpeakerLoader(torch.utils.data.Dataset):
     """
         1) loads audio, speaker_id, text pairs
         2) normalizes text and converts them to sequences of integers
         3) computes spectrograms from audio files.
     """
+
     def __init__(self, audiopaths, hparams):
         self.audiopaths = load_filepaths_and_text(audiopaths)
         self.max_wav_value = hparams.data.max_wav_value
         self.sampling_rate = hparams.data.sampling_rate
-        self.filter_length  = hparams.data.filter_length
-        self.hop_length     = hparams.data.hop_length
-        self.win_length     = hparams.data.win_length
-        self.sampling_rate  = hparams.data.sampling_rate
+        self.filter_length = hparams.data.filter_length
+        self.hop_length = hparams.data.hop_length
+        self.win_length = hparams.data.win_length
+        self.sampling_rate = hparams.data.sampling_rate
         self.use_sr = hparams.train.use_sr
         self.use_spk = hparams.model.use_spk
         self.spec_len = hparams.train.max_speclen
@@ -45,22 +49,22 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
             spec = torch.load(spec_filename)
         else:
             spec = spectrogram_torch(audio_norm, self.filter_length,
-                self.sampling_rate, self.hop_length, self.win_length,
-                center=False)
+                                     self.sampling_rate, self.hop_length, self.win_length,
+                                     center=False)
             spec = torch.squeeze(spec, 0)
             # torch.save(spec, spec_filename)
-            
+
         if self.use_spk:
             spk_filename = filename.replace(".wav", ".npy")
             spk_filename = spk_filename.replace("wav16k", "embed_16k/spk")
             spk = torch.from_numpy(np.load(spk_filename))
-        
+
         if not self.use_sr:
             c_filename = filename.replace(".wav", ".pt")
             c_filename = c_filename.replace("wav16k", "ssl_16k")
             c = torch.load(c_filename).squeeze(0)
         else:
-            i = random.randint(68,92)
+            i = random.randint(68, 92)
             '''
             basename = os.path.basename(filename)[:-4]
             spkname = basename[:4]
@@ -70,12 +74,26 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
             #print(c)
             '''
             c_filename = filename.replace(".wav", f"_{i}.pt")
-            c_filename = c_filename.replace("wav16k", "sr/wavlm16k")
+            replace_dir_name = "sr/wavlm16k_v1"
+            if 68 <= i <= 72:
+                replace_dir_name = "sr/wavlm16k_v1"
+            elif 73 <= i <= 76:
+                replace_dir_name = "sr/wavlm16k_v2"
+            elif 77 <= i <= 80:
+                replace_dir_name = "sr/wavlm16k_v3"
+            elif 81 <= i <= 84:
+                replace_dir_name = "sr/wavlm16k_v4"
+            elif 85 <= i <= 88:
+                replace_dir_name = "sr/wavlm16k_v5"
+            elif 89 <= i <= 92:
+                replace_dir_name = "sr/wavlm16k_v6"
+
+            c_filename = c_filename.replace("wav16k", replace_dir_name)
             c = torch.load(c_filename).squeeze(0)
-            
+
         lmin = min(c.size(-1), spec.size(-1))
         spec, c = spec[:, :lmin], c[:, :lmin]
-        audio_norm = audio_norm[:, :lmin*self.hop_length]
+        audio_norm = audio_norm[:, :lmin * self.hop_length]
         _spec, _c, _audio_norm = spec, c, audio_norm
         while spec.size(-1) < self.spec_len:
             spec = torch.cat((spec, _spec), -1)
@@ -85,8 +103,8 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         end = start + self.spec_len
         spec = spec[:, start:end]
         c = c[:, start:end]
-        audio_norm = audio_norm[:, start*self.hop_length:end*self.hop_length]
-        
+        audio_norm = audio_norm[:, start * self.hop_length:end * self.hop_length]
+
         if self.use_spk:
             return c, spec, audio_norm, spk
         else:
@@ -97,4 +115,3 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.audiopaths)
-
